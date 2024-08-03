@@ -1,0 +1,241 @@
+---
+title: 'Introduction to Large Multimodal Models'
+publishedAt: '2023-10-28'
+summary: 'Introducing Large Multimodal Models LMMs'
+---
+
+
+This blog post was written as part of the [**Training & Fine-Tuning LLMs for Production
+Gen AI 360 Foundational Model Certification.**](https://learn.activeloop.ai/) Check it out!
+
+<a href="https://learn.activeloop.ai/">
+  <img
+    alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+    src="/images/multimodal/image0.png"
+    width="100%"
+  />
+</a>
+
+
+
+## Introduction
+
+In this lesson, we will examine an emerging field of interest: The next progression in the evolution of LLMs, **Large multimodal models (LMMs)**. This topic adds a new layer to the material we've covered throughout the course.
+
+Simply put, multimodal models are designed to handle and interpret different data types - or **"modalities"** - such as text, images, audio, and video, all within a single coordinated system. This integration allows for a more comprehensive analysis and understanding than models processing only one data type, such as text in standard LLMs. For instance, supplementing a text prompt with voice or image inputs can enable these models to capture a more complex representation of the conveyed information. This is achieved by analyzing additional layers of data, such as the tone and cadence of your voice or the visual context provided by images, thus enhancing the depth and richness of the analysis.
+
+With the recent increase in the popularity of large language models, it is unsurprising that researchers are now exploring the potential of extending these models to handle multiple data types, aiming to create more versatile and valuable **general-purpose assistants**. Models that
+can solve arbitrary tasks specified by the user.
+
+In the following sections, we will explore the current implementations of LMMs and introduce key concepts on how they manage multimodality. We will also learn about their **emergent abilities** and explore the idea of **Instruction-tuned** LMMs. 
+
+Finally, in this lesson, we will learn how **Deep Lake** by ActiveLoop can be helpful in training or fine-tuning large multimodal models.
+
+## Common Architectures and Training Objectives
+
+By definition, multimodal models are designed to process various input modalities, such as text, images, and videos, and generate outputs in multiple modalities. However, a notable subset of currently popular LMMs primarily focuses on accepting image inputs and is limited to generating text outputs. 
+
+These specialized LMMs often leverage pre-trained large-scale vision or language models as their foundation. We can categorize them as 'Image-to-Text Generative Models,' also known as visual language models (VLMs). They generally perform tasks related to image understanding, such as question answering and image captioning. Examples include [GIT](https://arxiv.org/abs/2205.14100) by Microsoft, [BLIP2](https://arxiv.org/pdf/2301.12597.pdf) by SalesForce, and [Flamingo](https://arxiv.org/pdf/2204.14198.pdf) by DeepMind.  
+
+### **Model Architecture**
+
+These models use an **image encoder** to extract visual features and a standard LLM to output a text sequence. The image encoder can be based on convolutional neural networks (CNNs), such as [ResNet](https://arxiv.org/abs/1512.03385), or a transformer-based architecture like the [Vision Transformer (ViT)](https://arxiv.org/abs/2010.11929). 
+
+The image encoder and the language model can be trained from scratch or using pre-trained models. Most state-of-the-art models opt for the latter approach; an example is the pre-trained image encoder from the model [CLIP](https://arxiv.org/pdf/2103.00020.pdf) by OpenAI. The options for language models are also extensive: one could choose from various open-source pre-trained models, such as Meta's [OPT](https://arxiv.org/pdf/2205.01068.pdf), [Llama 2](https://arxiv.org/abs/2307.09288), or Google's instruction-trained [FlanT5](https://arxiv.org/abs/1910.10683) models.
+
+Optionally, models like [BLIP2](https://arxiv.org/pdf/2301.12597.pdf) introduce a trainable lightweight connection module connecting the vision and language modalities. Since BLIP2 only trains this light module, it is cheaper and faster than other methods while still managing a strong zero-shot performance on image understanding tasks. 
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image1.png"
+  width="100%"
+/>
+<span style={{ fontSize: '0.9rem' }}>From [“Multimodal Foundation Models: From Specialists to General-Purpose Assistants”](https://arxiv.org/pdf/2309.10020.pdf) paper</span>
+
+### **Training Objective**
+
+Similar to what we've seen in the course, LMMs are trained using an **auto-regressive loss** function applied to the output text tokens. When using a [Vision Transformer](https://arxiv.org/abs/2010.11929) architecture, the concept of '**image tokens**,' which is analogous to text tokenization, is introduced. Just like text can be divided into smaller units like sentences, words, or sub-words for easier processing, images can be segmented into smaller, non-overlapping patches, known as 'tokens.'
+
+The exact attention mechanisms come into play in the Transformer architecture employed by these LMMs. Image tokens can 'attend' to each other, meaning they can influence each other's representation in the model. Meanwhile, the generation of each text token depends on all the image tokens and the previously generated text tokens. Check out our lesson about **[Understanding Transformers](https://www.notion.so/Understanding-Transformers-c4a6f85b4f0f4828ab6e2dc1c2a7b775?pvs=21)** if you are still getting familiar with these concepts. 
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image2.png"
+  width="100%"
+/>
+<span style={{ fontSize: '0.9rem' }}>From [“Multimodal Foundation Models: From Specialists to General-Purpose Assistants”](https://arxiv.org/pdf/2309.10020.pdf) paper</span>
+
+## Differences in Training Schemes
+
+While having the same training objective, some variations emerge in the training schemes of different Language-Multimodal Models (LMMs). Most models, such as GIT and BLIP2, employ only image-text pairs for training. This approach allows them to establish connections between the text and image representations effectively but requires a large, curated image-text pairs dataset.
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image3.png"
+  width="100%"
+/>
+<span style={{ fontSize: '0.9rem' }}>From [“Multimodal Foundation Models: From Specialists to General-Purpose Assistants”](https://arxiv.org/pdf/2309.10020.pdf) paper</span>
+
+On the other hand, the Flamingo model has some architectural innovations that allow for unlabeled web training data. They extract the text and images from the HTML of 43M webpages. They also determine the positions of images relative to the text based on the relative positions of
+the text and image elements in the Document Object Model (DOM).
+
+This model can ingest a **multimodal prompt** containing images and/or videos interleaved with text as input and generate text in an open-ended manner. It can produce text for tasks such as image captioning or visual question-answering. 
+
+The system connects the different modalities and enables multimodal prompting through steps. Initially, a **Perceiver Resampler** module receives spatiotemporal features from visual data, such as an image or video, processed by the pre-trained Vision Encoder. The Perceiver then generates a fixed number of 'visual tokens.'
+
+These visual tokens serve as inputs to condition a frozen language model, a pre-trained language model that is not updated during this process. The conditioning is facilitated by adding newly initialized **cross-attention layers** interleaved with the language model's pre-existing layers. These new layers are not frozen and will be updated during training. 
+
+While this architecture is less efficient by having more parameters to train than the one from BLIP2, it provides a powerful way for the language model to incorporate visual cues.
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image4.png"
+  width="100%"
+/>
+<span style={{ fontSize: '0.9rem' }}>From “[Flamingo: a Visual Language Model for Few-Shot Learning](https://arxiv.org/pdf/2204.14198.pdf)” paper</span>
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image5.png"
+  width="100%"
+/>
+<span style={{ fontSize: '0.9rem' }}>From [“Multimodal Foundation Models: From Specialists to General-Purpose Assistants”](https://arxiv.org/pdf/2309.10020.pdf) paper</span>
+
+### Discovering Emergent Abilities - Few-shot In-Context-Learning
+
+Its flexible architecture allows Flamingo to be trained with multimodal prompts that interleave text with visual tokens. This enables the model to demonstrate emergent abilities, such as few-shot in-context learning, **analogous to GPT-3**. You can see some examples in the figure below. 
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image6.png"
+  width="100%"
+/>
+<span style={{ fontSize: '0.9rem' }}>From [“Multimodal Foundation Models: From Specialists to General-Purpose Assistants”](https://arxiv.org/pdf/2309.10020.pdf) paper</span>
+
+## Open-sourcing Flamingo
+
+The state-of-the-art results reported in the Flamingo paper are exciting and clearly show significant progress in the field of LMMs. However, DeepMind has yet to make the Flamingo model publicly available.
+
+To fill this gap, HuggingFace's team took the initiative to create an open-source reproduction of Flamingo, known as **[IDEFICS](https://huggingface.co/blog/idefics)**. This replica is constructed entirely using publicly accessible resources, including the LLaMA v1 and OpenCLIP models. IDEFICS is offered in the 'base' and the 'instructed' variants. Both of these are available in two sizes—9 billion parameters and 80 billion parameters. IDEFICS offers comparable results to Flamingo.
+
+The team used a mixture of openly available datasets such as Wikipedia, Public Multimodal Dataset, and LAION to train these models. They also created a new 115B token dataset called **[OBELICS](https://huggingface.co/datasets/HuggingFaceM4/OBELICS)**. It has 141 million interleaved image-text documents scraped from the web and contains 353 million images, replicating the dataset described by DeepMind in the Flamingo paper.
+
+IDEFICS is available through the Transformers library, and a demo of it is available [here](https://huggingface.co/spaces/HuggingFaceM4/idefics_playground).
+
+Another open-source replication of Flamingo is called [Open Flamingo](https://github.com/mlfoundations/open_flamingo) at the 9B parameter size, offering similar performance to the original model. 
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image7.png"
+  width="100%"
+/>
+
+<span style={{ fontSize: '0.9rem' }}>From “**[Introducing IDEFICS: An Open Reproduction of State-of-the-Art Visual Language Model](https://huggingface.co/blog/idefics)**” blog post.</span>
+
+## Instruction-tuned LMMs
+
+As demonstrated by GPT-3's emergent abilities with few-shot prompting, where the model could tackle tasks it hadn't seen during training, there's been a rising interest in instruction-fine-tuned LMMs. By allowing the models to be instruction-tuned, we can expect these models to perform a broader set of tasks and better alignment with human intents. This is line with the work done by OpenAI with [InstructGPT](https://openai.com/research/instruction-following) and, more recently, GPT-4.
+
+OpenAI has showcased the capability of their newer “GPT-4 with vision” model to follow instructions using visual inputs in their [GPT4 technical report](https://arxiv.org/pdf/2303.08774.pdf) and [GPT-4V(ision) System Card](https://cdn.openai.com/papers/GPTV_System_Card.pdf).
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image8.png"
+  width="100%"
+/>
+
+<span style={{ fontSize: '0.9rem' }}>From the “[GPT-4 Technical Report](https://arxiv.org/pdf/2303.08774.pdf)”</span>
+
+Following the announcement of OpenAI's **[multimodal GPT-4](https://openai.com/research/gpt-4)**, there has been a surge in related research. As a result, multiple research labs have introduced instruction-tuned LMMs, including **[LLaVA](https://arxiv.org/abs/2304.08485)**, **[MiniGPT-4](https://arxiv.org/abs/2304.10592)**, and **[InstructBlip](https://arxiv.org/abs/2305.06500)**. They feature similar network architectures as previous LMMs but train on instruction-following datasets.
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image9.png"
+  width="100%"
+/>
+
+<span style={{ fontSize: '0.9rem' }}>From [“Multimodal Foundation Models: From Specialists to General-Purpose Assistants”](https://arxiv.org/pdf/2309.10020.pdf) paper</span>
+
+### Exploring LLaVA - an instruction-tuned LMM
+
+The network architecture of LLaVA resembles the one we reviewed before. This model connects a pre-trained CLIP visual encoder and the [Vicuna](https://lmsys.org/blog/2023-03-30-vicuna/) language model via a projection matrix. In other words, they consider a simple linear layer to connect image features into the word embedding space. Specifically, they apply a trainable projection matrix called W to convert the image features into language embedding tokens with the same dimensionality as the word embedding space in the language model.
+
+The authors of LLaVA chose these new linear projection layers that are more lightweight than the Q-Former connection module we saw for BLIP2 and the Perceiver Resampler and cross-attention layers from Flamingo. 
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image10.png"
+  width="100%"
+/>
+
+<span style={{ fontSize: '0.9rem' }}>From “[Visual Instruction Tuning](https://arxiv.org/pdf/2304.08485.pdf)” paper</span>
+
+The authors then adopt a two-stage instruction-tuning procedure to train the model. First, they pre-train the projection matrix using a subset of the [CC3M](https://aclanthology.org/P18-1238.pdf) dataset, consisting of images and captions. Then, the model is finetuned end-to-end. Both the projection matrix and the LLM are trained on the proposed multimodal instruction-following data for daily user-oriented applications.
+
+They also leverage GPT-4 to create a **synthetic dataset** consisting of multimodal instructions, drawing from widely available image-pair data.
+
+In the dataset construction process, GPT-4 is shown symbolic representations of images using **captions** and the **coordinates of bounding boxes**, as depicted in the figure below. These representations are derived from the COCO dataset. This information is fed into GPT-4 as a prompt to generate training samples. The generated samples fall into **three categories**: question-answer conversations, detailed descriptions, and complex reasoning questions and answers.
+
+They create 158K training samples in total. 
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image11.png"
+  width="100%"
+/>
+
+<span style={{ fontSize: '0.9rem' }}>From “[Visual Instruction Tuning](https://arxiv.org/pdf/2304.08485.pdf)” paper</span>
+
+The LLaVA model demonstrates the effectiveness of visual instruction tuning using language-only GPT-4. They show its capabilities by prompting the model with the same question and image as in the GPT-4 report. You can see the result below. The authors also report a new SOTA by fine-tuning [ScienceQA](https://scienceqa.github.io/), a benchmark that contains 21k multimodal multiple-choice questions with rich domain diversity across three subjects, 26 topics, 127 categories, and 379 skills.
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image12.png"
+  width="100%"
+/>
+
+<span style={{ fontSize: '0.9rem' }}>From “[Visual Instruction Tuning](https://arxiv.org/pdf/2304.08485.pdf)” paper</span>
+
+## Beyond vision and language
+
+In recent months, Image-to-text generative models have dominated the Large Multimodal Model (LMM) landscape. However, newer models have emerged that embrace a wider range of modalities beyond just vision and language.
+
+For instance, **[PandaGPT](https://panda-gpt.github.io/)** is designed to handle any input data type, thanks to its integration with the **[ImageBind](https://imagebind.metademolab.com/)** encoder.
+
+There's also **[SpeechGPT](https://github.com/0nutation/SpeechGPT#speechgpt-empowering-large-language-models-with-intrinsic-cross-modal-conversational-abilities)**, a model that integrates text and speech data and generates speech alongside text.
+
+**[NExT-GPT](https://arxiv.org/pdf/2309.05519.pdf)** stands out as a versatile model capable of receiving and producing outputs in any modality."
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image13.png"
+  width="100%"
+/>
+
+<span style={{ fontSize: '0.9rem' }}>From “[NExT-GPT: Any-to-Any Multimodal LLM](https://arxiv.org/pdf/2309.05519.pdf)” paper</span>
+
+[HuggingGPT](https://arxiv.org/pdf/2303.17580.pdf) is a novel system that integrates with the HuggingFace platform. It employs a Large Language Model (LLM) as its central controller. This LLM determines which specific model on HuggingFace is best suited for a task, selects that model, and then returns the model's output.
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image14.png"
+  width="100%"
+/>
+
+<span style={{ fontSize: '0.9rem' }}>From “[HuggingGPT: Solving AI Tasks with ChatGPT and its Friends in Hugging Face](https://arxiv.org/pdf/2303.17580.pdf)” paper</span>
+
+## Deep Lake and Multimodal LLMs
+
+Deep Lake, differently from many other data lake and vector store products, is multi-modal and can store any data, from texts to images, videos, or audio. If you’re interested in building multi-modal LLMs, this is something to consider, as you can store the different types of data you need in the same place. See this [code example](https://docs.activeloop.ai/getting-started/deep-learning/creating-datasets-manually) to see how to store images and texts in the same dataset. Moreover, here’s the [full list of data types](https://docs.deeplake.ai/en/latest/Htypes.html) that can be managed with Deep Lake.
+
+<img
+  alt="Multimodal Foundation Models: From Specialists to General-Purpose Assistants"
+  src="/images/multimodal/image15.png"
+  width="100%"
+/>
+
+List of data types managed by Deep Lake. It can be found at [https://docs.deeplake.ai/en/latest/Htypes.html](https://docs.deeplake.ai/en/latest/Htypes.html).
+
+## Conclusion
+
+In this module, we delved into the emergent field of LMMs. We examined the leading models that combine both vision and language modalities. We learned that instruction-tuning allows these models to achieve greater generalization on tasks they haven't encountered before. Furthermore, we were introduced to advanced LMMs capable of integrating an even wider range of modalities. Lastly, we discussed the utility of Deep Lake in fine-tuning LMMs.

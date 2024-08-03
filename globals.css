@@ -22,13 +22,29 @@ body {
     display: flex;
     align-items: center;
     transition: all 0.3s;
-    /* text-decoration: none; */
-    /* color: inherit; */
+    text-decoration: underline;
+    color: inherit;
 
 }
-/* .link-item:hover {
+.link-item:hover {
     color: #1a202c;
-} */
+}
 .link-text {
     margin-left: 0.5rem;
+}
+
+
+.notion-link {
+    display: flex;
+    align-items: center;
+    transition: all 0.3s;
+    text-decoration: none;  /* Remove default underline */
+    color: inherit;  /* Use the parent's text color */
+    border-bottom: 1px solid rgba(55, 53, 47, 0.16);  /* Add a subtle underline */
+}
+
+.notion-link:hover {
+    color: inherit;  /* Keep the same color on hover */
+    background-color: rgba(55, 53, 47, 0.08);  /* Very light gray background on hover */
+    border-radius: 3px;  /* Slight rounding of corners */
 }

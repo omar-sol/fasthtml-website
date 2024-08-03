@@ -1,4 +1,4 @@
-from fasthtml.common import *
+from fasthtml.common import *  # type: ignore
 from fasthtml.components import Svg
 from fasthtml.svg import Path
 
