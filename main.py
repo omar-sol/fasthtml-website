@@ -123,6 +123,7 @@ def blogs_list():
             hx_get="/",
             hx_target="#maincontent",
             hx_swap="outerHTML",
+            hx_push_url="true",
             style="text-decoration: underline; color: #000000;",
         ),
         id="maincontent",
@@ -163,6 +164,7 @@ def blog_post(post_name: str):
             hx_get="/blog",
             hx_target="#maincontent",
             hx_swap="outerHTML",
+            hx_push_url="true",
         ),
         id="maincontent",
     )
