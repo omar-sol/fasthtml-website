@@ -1,18 +1,17 @@
 import asyncio
 
 from claudette import Client
+from components.daisy_components import navbar, sidebar
 from fastcore.all import threaded
 from fasthtml import FastHTML
 from fasthtml.common import *
 from fasthtml.svg import Path
-
-# from components.dui_navbar import navbar, sidebar
-from components.dui_navbar import navbar
+from js_scripts import js_scripts
 
 # Set up the chat model client (https://claudette.answer.ai/)
 client = Client(model="claude-3-haiku-20240307")
 
-system_prompt = """You are a helpful and concise assistant."""
+system_prompt = """You are a helpful assistant."""
 
 
 # Set up the app, including daisyui and tailwind for the chat component
@@ -22,21 +21,13 @@ dlink = Link(
     href="https://cdn.jsdelivr.net/npm/daisyui@4.11.1/dist/full.min.css",
 )
 
-script = Script(
-    """
-function scrollToBottom() {
-    var chatlist = document.getElementById('chatlist');
-    chatlist.scrollTop = chatlist.scrollHeight;
-}
-"""
-)
 
 app = FastHTML(
     live_reload=True,
     hdrs=(
         tlink,
         dlink,
-        script,
+        js_scripts,
     ),
 )
 
@@ -65,7 +56,7 @@ assistant_icon = Svg(
     xmlns="http://www.w3.org/2000/svg",
     width="28",
     height="28",
-    fill="#000000",
+    fill="currentColor",
     viewbox="0 0 256 256",
 )
 
@@ -90,7 +81,7 @@ def ChatMessage(msg_idx):
         content = Div(
             Div(
                 text,
-                cls="px-5 py-2.5 rounded-3xl bg-blue-500 text-white inline-block max-w-full",
+                cls="prose dark:prose-invert dark:text-white prose-p:leading-relaxed break-words px-5 py-2.5 rounded-3xl bg-base-200 inline-block max-w-full",
             ),
             cls="flex justify-end",
         )
@@ -99,26 +90,25 @@ def ChatMessage(msg_idx):
             Div(
                 Div(
                     assistant_icon,
-                    # cls="flex items-center justify-center w-6 h-6 rounded-md shrink-0 border",
-                    cls="text-primary-foreground flex size-[24px] shrink-0 select-none items-center justify-center rounded-md border shadow-sm",
+                    cls="text-gray-800 dark:text-white flex size-[24px] shrink-0 select-none items-center justify-center rounded-md border shadow-sm dark:border-gray-700 dark:bg-gray-800",
                 ),
                 Div(
                     Div(
                         text,
-                        # cls="prose dark:prose-invert prose-p:leading-relaxed px-5 py-2.5 rounded-3xl break-words border",
-                        cls="prose dark:prose-invert prose-p:leading-relaxed break-words border",
+                        cls="prose dark:prose-invert dark:text-white prose-p:leading-relaxed break-words",
                     ),
                     cls="space-y-1 overflow-hidden",
                 ),
-                cls="flex items-start space-x-7 border border-yellow-500",
-                # cls="group relative flex items-center space-x-7 border border-yellow-500",
+                # cls="flex items-start space-x-7 border border-yellow-500",
+                cls="flex items-start space-x-7",
             ),
             cls="flex",
         )
 
     return Div(
         content,
-        cls=f"mb-8 {'mr-2' if is_user else 'ml-2'} border border-purple-500",
+        # cls=f"mb-8 {'mr-2' if is_user else 'ml-2'} border border-purple-500",
+        cls=f"mb-8 {'mr-2' if is_user else 'ml-2'}",
         id=f"chat-message-{msg_idx}",
         **stream_args,
     )
@@ -140,16 +130,16 @@ def ChatInput():
         name="message",
         id="message-input",
         placeholder="Ask me anything ...",
-        cls="w-full pl-3 pr-16 py-2 text-gray-700 border rounded-lg focus:outline-none",
+        cls="w-full pl-3 pr-16 py-2 text-gray-700 border rounded-lg focus:outline-none dark:text-white dark:border-gray-700",
         hx_swap_oob="true",
         oninput="toggleButton()",
         autofocus=True,
     )
 
 
-@app.get("/")
-def home():
-    return Title("Chatbot"), Body(
+main_layout = Div(
+    sidebar,
+    Div(
         navbar,
         Div(
             Div(
@@ -157,7 +147,7 @@ def home():
                     Div(
                         *[ChatMessage(i) for i in range(len(chat_history))],
                         id="chatlist",
-                        cls="bg-gray-100 rounded-lg p-8 overflow-y-auto flex-1",
+                        cls="bg-base-100 p-8 overflow-y-auto flex-1",
                     ),
                     cls="flex flex-col flex-1 overflow-hidden",
                 ),
@@ -168,69 +158,32 @@ def home():
                             arrow_right_svg,
                             type="submit",
                             id="send-button",
-                            cls="absolute right-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white fill-white active:scale-95 overflow-hidden rounded-xl transition-colors duration-100",
+                            cls="btn btn-sm absolute right-2 top-1/2 transform -translate-y-1/2",
                         ),
                         cls="relative w-full",
                     ),
                     hx_post="/send_message",
                     hx_target="#chatlist",
                     hx_swap="beforeend",
-                    cls="bg-white p-4 rounded-t-lg shadow-md w-full border border-gray-200",
+                    cls="bg-base-100 p-4 rounded-t-lg shadow-md w-full max-w-3xl mx-auto border border-gray-200",
                 ),
-                cls="flex flex-col h-full max-w-4xl w-full mx-auto border border-yellow-500",
+                id="main-content",
+                cls="flex flex-col h-full w-full max-w-4xl mx-auto",
             ),
-            # cls="flex flex-col flex-1 overflow-hidden p-4",
-            cls="flex flex-col flex-1 overflow-hidden",
+            cls="flex flex-col flex-grow overflow-auto",
         ),
+        cls="flex flex-col flex-grow overflow-hidden",
+    ),
+    cls="flex flex-1 h-screen bg-base-100 overflow-hidden",
+)
+
+
+@app.get("/")
+def home():
+    return Title("Chatbot"), Body(
+        main_layout,
         cls="antialiased flex flex-col h-screen bg-gray-100",
     )
-
-
-# main_layout = Div(
-#     navbar,
-#     sidebar,
-#     Div(
-#         Div(
-#             Div(
-#                 Div(
-#                     *[ChatMessage(i) for i in range(len(chat_history))],
-#                     id="chatlist",
-#                     cls="bg-gray-100 rounded-lg p-8 overflow-y-auto flex-1",
-#                 ),
-#                 cls="flex flex-col flex-1 overflow-hidden",
-#             ),
-#             Form(
-#                 Div(
-#                     ChatInput(),
-#                     Button(
-#                         arrow_right_svg,
-#                         type="submit",
-#                         id="send-button",
-#                         cls="btn btn-sm absolute right-2 top-1/2 transform -translate-y-1/2",
-#                     ),
-#                     cls="relative w-full",
-#                 ),
-#                 hx_post="/send_message",
-#                 hx_target="#chatlist",
-#                 hx_swap="beforeend",
-#                 # cls="bg-base-200 p-4 rounded-t-lg shadow-md w-full",
-#                 cls="bg-white p-4 rounded-t-lg shadow-md w-full border border-gray-200",
-#             ),
-#             cls="flex flex-col h-full max-w-4xl w-full mx-auto border border-yellow-500",
-#         ),
-#         cls="flex flex-col flex-1 overflow-hidden ml-80 mt-16 border border-blue-500",
-#         # cls="flex flex-col flex-1 overflow-hidden ml-80",
-#     ),
-#     cls="flex flex-col min-h-screen bg-base-100 border border-blue-500",
-# )
-
-
-# @app.get("/")
-# def home():
-#     return Title("Chatbot"), Body(
-#         main_layout,
-#         cls="antialiased flex flex-col h-screen bg-gray-100",
-#     )
 
 
 # Generate AI response
