@@ -1,15 +1,28 @@
-import asyncio
+import logging
+import pdb
 
+import instructor
+import logfire
 from claudette import Client
 from components.daisy_components import navbar, sidebar
 from fastcore.all import threaded
 from fasthtml import FastHTML
-from fasthtml.common import *
+from fasthtml.common import *  # type: ignore
 from fasthtml.svg import Path
 from js_scripts import js_scripts
+from openai import AsyncOpenAI, OpenAI
 
-# Set up the chat model client (https://claudette.answer.ai/)
-client = Client(model="claude-3-haiku-20240307")
+# logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.INFO)
+# logfire.configure()
+
+sync_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"),timeout=60, max_retries=0) 
+# logfire.instrument_openai(sync_client)
+# sync_client= instructor.from_openai(sync_client)
+
+# async_client = AsyncOpenAI(timeout=60, max_retries=0)
+# logfire.instrument_openai(async_client)
+# async_client= instructor.from_openai(async_client)
 
 system_prompt = """You are a helpful assistant."""
 
@@ -31,7 +44,6 @@ app = FastHTML(
     ),
 )
 
-# Chat history
 chat_history = []
 
 arrow_right_svg = Svg(
@@ -63,8 +75,6 @@ assistant_icon = Svg(
 
 def ChatMessage(msg_idx):
     msg = chat_history[msg_idx]
-    role = msg["role"]
-    is_user = role == "user"
     text = "..." if msg["content"] == "" else msg["content"]
     generating = "generating" in msg and msg["generating"]
     stream_args = (
@@ -77,7 +87,7 @@ def ChatMessage(msg_idx):
         else {}
     )
 
-    if is_user:
+    if msg["role"] == "user":
         content = Div(
             Div(
                 text,
@@ -107,8 +117,8 @@ def ChatMessage(msg_idx):
 
     return Div(
         content,
-        # cls=f"mb-8 {'mr-2' if is_user else 'ml-2'} border border-purple-500",
-        cls=f"mb-8 {'mr-2' if is_user else 'ml-2'}",
+        # cls=f"mb-8 {'mr-2' if msg["role"] == "user" else 'ml-2'} border border-purple-500",
+        cls=f"mb-8 {'mr-2' if msg["role"] == "user" else 'ml-2'}",
         id=f"chat-message-{msg_idx}",
         **stream_args,
     )
@@ -194,16 +204,17 @@ def generate_response(idx):
         for msg in chat_history
         if "generating" not in msg
     ]
-    r = client(messages, sp=system_prompt, stream=True)
-    for chunk in r:
-        chat_history[idx]["content"] += chunk
-        asyncio.run(asyncio.sleep(0.05))  # Small delay between chunks
+    messages.insert(0, {"role": "system", "content": system_prompt})
+    response = sync_client.chat.completions.create(model="gpt-4o", messages=messages, stream=True)
+    for chunk in response:
+        token = chunk.choices[0].delta.content
+        token = "" if token is None else token
+        chat_history[idx]["content"] += token
     chat_history[idx]["generating"] = False
-
 
 # Handle sending a message
 @app.post("/send_message")
-async def send_message(message: str):
+def send_message(message: str):
 
     if not message.strip():
         return
@@ -211,7 +222,7 @@ async def send_message(message: str):
     # Add user message to chat history
     user_idx = len(chat_history)
     print("user_idx", user_idx)  # user_idx 0
-    chat_history.append({"role": "user", "content": message})
+    chat_history.append({"role": "user", "content": message.rstrip()})
 
     # Add initial AI message
     ai_idx = len(chat_history)
