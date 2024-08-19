@@ -6,11 +6,12 @@ from fasthtml.components import Image, Sections, Svg
 from fasthtml.svg import Path
 from markdown import markdown
 
-Link(rel="stylesheet", href="/globals.css")
+Link(rel="stylesheet", href="globals.css")
 app, rt = fast_app(  # type: ignore
-    live_reload=True, hdrs=(Link(rel="stylesheet", href="/globals.css"),), pico=False
+    live_reload=True,
+    hdrs=(Link(rel="stylesheet", href="globals.css"),),
+    pico=False,
 )
-
 arrow_icon = Svg(
     Path(
         d="M2.07102 11.3494L0.963068 10.2415L9.2017 1.98864H2.83807L2.85227 0.454545H11.8438V9.46023H10.2955L10.3097 3.09659L2.07102 11.3494Z",

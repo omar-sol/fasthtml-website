@@ -2,3 +2,6 @@ python-fasthtml
 markdown
 uvicorn>=0.29
 claudette
+modal
+openai
+instructor
