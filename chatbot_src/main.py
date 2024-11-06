@@ -3,6 +3,7 @@ import pdb
 
 import instructor
 import logfire
+import markdown
 from claudette import Client
 from components.daisy_components import navbar, sidebar
 from fastcore.all import threaded
@@ -24,22 +25,48 @@ sync_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"),timeout=60, max_re
 # logfire.instrument_openai(async_client)
 # async_client= instructor.from_openai(async_client)
 
-system_prompt = """You are a helpful assistant."""
-
-
 # Set up the app, including daisyui and tailwind for the chat component
-tlink = (Script(src="https://cdn.tailwindcss.com"),)
+tlink = Script(src="https://cdn.tailwindcss.com")
+
 dlink = Link(
     rel="stylesheet",
     href="https://cdn.jsdelivr.net/npm/daisyui@4.11.1/dist/full.min.css",
 )
 
+custom_tailwind = Style("""
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;
+
+    @layer components {
+        .prose pre {
+            background-color: #FFFFFF;
+            color: #000000;
+            padding: 0.5rem;
+            border-radius: 1rem;
+            border: 0.1rem solid #000000 !important;
+            }
+        .prose code {
+            padding: 0.2em 0.4em;
+            background-color: #FFFFFF;
+            border-radius: 0.25rem;
+            border: 0.05rem solid #FFFF00 !important;
+        }
+                        
+        /* Add styles for specific syntax highlighting classes */
+        .codehilite .k { color: #007020; font-weight: bold; } /* Keyword */
+        .codehilite .s { color: #4070a0; } /* String */
+        .codehilite .c { color: #60a0b0; font-style: italic; } /* Comment */
+        /* Add more classes as needed */
+    }
+""")
 
 app = FastHTML(
     live_reload=True,
     hdrs=(
         tlink,
         dlink,
+        custom_tailwind,
         js_scripts,
     ),
 )
@@ -76,6 +103,7 @@ assistant_icon = Svg(
 def ChatMessage(msg_idx):
     msg = chat_history[msg_idx]
     text = "..." if msg["content"] == "" else msg["content"]
+    content = msg.get("html_content", "") if msg["content"] else "..."
     generating = "generating" in msg and msg["generating"]
     stream_args = (
         {
@@ -104,7 +132,7 @@ def ChatMessage(msg_idx):
                 ),
                 Div(
                     Div(
-                        text,
+                        content,
                         cls="prose dark:prose-invert dark:text-white prose-p:leading-relaxed break-words",
                     ),
                     cls="space-y-1 overflow-hidden",
@@ -199,6 +227,7 @@ def home():
 # Generate AI response
 @threaded
 def generate_response(idx):
+    system_prompt = """You are a helpful assistant."""
     messages = [
         {"role": msg["role"], "content": msg["content"]}
         for msg in chat_history
@@ -210,7 +239,14 @@ def generate_response(idx):
         token = chunk.choices[0].delta.content
         token = "" if token is None else token
         chat_history[idx]["content"] += token
+
+        # Convert the entire content to HTML after each token
+        html_content = markdown.markdown(chat_history[idx]["content"], extensions=['fenced_code', 'codehilite'])
+        chat_history[idx]["html_content"] = NotStr(html_content)
+
     chat_history[idx]["generating"] = False
+
+
 
 # Handle sending a message
 @app.post("/send_message")

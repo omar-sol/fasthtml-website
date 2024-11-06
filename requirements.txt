@@ -5,3 +5,4 @@ claudette
 modal
 openai
 instructor
+logfire

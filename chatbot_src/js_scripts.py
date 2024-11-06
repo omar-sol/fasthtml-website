@@ -25,17 +25,7 @@ function toggleSidebar() {
     }
 }
 
-// Initialize sidebar state on page load
-window.addEventListener('load', function() {
-    const sidebar = document.getElementById('sidebar');
-    const navbarOpenBtn = document.getElementById('navbar-open-btn');
-    const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
 
-    if (sidebar.classList.contains('w-64')) {
-        navbarOpenBtn.classList.add('hidden');
-        sidebarCloseBtn.classList.remove('hidden');
-    }
-});
 
 """
 )
